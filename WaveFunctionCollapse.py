@@ -1,145 +1,151 @@
-
 import numpy as np
-# ╗╝═╚╔
-# ╔═╗║
-# ╚═╝
-#tile name and asset
+import sys
 
-tiles = {0 : ' ',
-        1 : '╔',
-        2 : '╗',
-        3 : '═',
-        4 : '║',
-        5 : '╚',
-        6 : '╝',
-
-        }
-
-#tile rule for central and delta pos
-#central tile { tuple offset (x,y) [possibility]}
-tiles_rule = {
-    #   up                    r                       d                       l
-    0:{(0,-1):{0,3,5,6},       (1,0):{0,1,4,5},      (0,1):{0,1,2,3},      (-1,0):{0,2,4,6}},
-    1:{(0,-1):{0,3,5,6},       (1,0):{0,2,3},        (0,1):{4,5,6},        (-1,0):{0,4,6}},
-    2:{(0,-1):{0,3,5,6},       (1,0):{0,4,5},        (0,1):{4,5,6},        (-1,0):{1,3}},
-    3:{(0,-1):{0,3},           (1,0):{2,3,6},        (0,1):{0,1,2,3},      (-1,0):{5,1,3}},
-    4:{(0,-1):{1,2,4},         (1,0):{0,4,1,5},      (0,1):{5,6,4},        (-1,0):{0,2,6,4}},
-    5:{(0,-1):{4,1,2},         (1,0):{3,6},          (0,1):{0,1,2,3},      (-1,0):{4,6,0,2}},
-    6:{(0,-1):{4,1,2},         (1,0):{0,4,1},        (0,1):{0,1,2,3},      (-1,0):{1,2,3,5}},
+print(sys.getrecursionlimit())
+tiles = {
+    -1:'o',
+    0 : ' ',
+    1 : '╔',
+    2 : '╗',
+    3 : '═',
+    4 : '║',
+    5 : '╚',
+    6 : '╝',
 }
 
-def get_entropy(map_v,nb_tile):
-    entropy = 0.
-    for y in range(map_v.shape[1]):
-        for x in range(map_v.shape[0]):
-            e_x = len(map_v[x,y])/nb_tile
-            e_min = 1./nb_tile
-            e_max = 1.
-            case_entropy = (e_x - e_min) / (e_max-e_min)
-            #print(case_entropy,end=' ')
-            entropy += case_entropy
-        #print()
 
-    entropy = entropy/(map_v.shape[0]*map_v.shape[1])
-    print(entropy)
-    return entropy
+tiles_rule = {
+    (0,-1):{-1:{0,1,2,3,4,5,6}, 0:{0,3,5,6},    1:{0,3,5,6},    2:{0,3,5,6},    3:{0,3},        4:{1,2,4},      5:{4,1,2},      6:{4,1,2}},   #u
+    (1,0) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,4,5},    1:{0,2,3},      2:{0,4,5},      3:{2,3,6},      4:{0,4,1,5},    5:{3,6},        6:{0,4,1}},   #r
+    (0,1) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,2,3},    1:{4,5,6},      2:{4,5,6},      3:{0,1,2,3},    4:{5,6,4},      5:{0,1,2,3},    6:{0,1,2,3}}, #d
+    (-1,0):{-1:{0,1,2,3,4,5,6}, 0:{0,2,4,6},    1:{0,4,6},      2:{1,3},        3:{5,1,3},      4:{0,2,6,4},    5:{4,6,0,2},    6:{1,2,3,5}}, #l
+}
 
-def plot_map(map_v,nb_tile):
-    (size_x,size_y) = map_v.shape
-    for idx_y in range(size_y):
-        for idx_x in range(size_x):
-            print('|',end ='')
-            for idx_p , i in enumerate(map_v[idx_x,idx_y]):
-                print(i,',',end='')
+class WaveFunctionCollapse:
 
-            print('  '*(nb_tile-len(map_v[idx_x,idx_y])),end='')
-        print()
-    print()
+    def __init__(self,tiles,tiles_rule,map_size = (10,10)) -> None:
+        self.tiles      =tiles
+        self.nb_tile    =len(tiles.keys())
+        self.tiles_rule =tiles_rule
+        #make the map
+        self.limit_map  =map_size
+        self.map_v=np.empty(map_size,dtype=object)
+        for x in range(self.limit_map[0]):
+            for y in range(self.limit_map[1]):
+                self.map_v[x,y] = set(tiles.keys())
 
-def plot_tiles(map_v,tiles):
-    (size_x,size_y) = map_v.shape
-    for idx_y in range(size_y):
-        for idx_x in range(size_x):
-            if len(map_v[idx_x,idx_y]) >1:
-                print('x',end ='')
-            else:
-                for i in map_v[idx_x,idx_y]:
-                    print(tiles[i],end ='')
-        print()
-    print()
+    def get_rules_form_centrals(self,centrals:set()):
+        local_rule = {}
+        for delta_pos,possibility in self.tiles_rule.items():
+            local_rule[delta_pos] = set()
+            i_centrals = set(possibility.keys()).intersection(centrals)
+            for i in i_centrals:
+                local_rule[delta_pos]=local_rule[delta_pos].union(possibility[i])
+        return local_rule
 
-def run_rule_pos(map_v,x,y,tiles_rule):
-    pos_tiles = map_v[x,y]
-    to_applies = {}
+    def collapse(self,position:tuple):
+        #print('go colapse')
 
-    for central in pos_tiles:
-        for delta_pos in tiles_rule[central].keys():
-
-            #init the to_applies
-            new_x = x + delta_pos[0]
-            new_y = y + delta_pos[1]
-            if not(new_x >= 0 and new_x < map_v.shape[0]\
-            and new_y >= 0 and new_y < map_v.shape[1]):
+        self.plot()
+        print(position)
+        local_rule = self.get_rules_form_centrals(self.map_v[position])
+        for delta_pos,rule in local_rule.items():
+            new_pos = (position[0]+delta_pos[0],position[1]+delta_pos[1])
+            #is in the map 
+            if new_pos[0] < 0 or new_pos[1] < 0 \
+            or new_pos[0] >= self.limit_map[0] or new_pos[1] >= self.limit_map[1]:
                 continue
+
             
-            new_set = to_applies.get((new_x,new_y),set()).union(tiles_rule[central][delta_pos] )
+            new_possibility = self.map_v[new_pos].intersection(rule)
 
-            if new_set != set():
-                to_applies[(new_x,new_y)] = new_set
+            if new_possibility == set():
+                print(self.map_v[new_pos],rule,new_possibility)
+                self.map_v[new_pos] = {-1}
+                self.plot()
+                print('Untrue',position,new_pos)
+                
+                #raise()
+                continue
+
+            if new_possibility != self.map_v[new_pos]:
+                #self.plot()
+                self.map_v[new_pos] = new_possibility
+                self.collapse(new_pos)
+
+    def run(self):
+        #get next
+        #print('init')
+        min_possibility = self.nb_tile
+        next_pos = []
+        #print('go')
+        for y in range(self.limit_map[1]):
+            for x in range(self.limit_map[0]):
+                if len(self.map_v[x,y]) > 1 and len(self.map_v[x,y]) <= min_possibility:
+                    min_possibility = len(self.map_v[x,y])
+                    next_pos.append((x,y))
+        #print('the next')
+        #self.plot()
+        #print('next_pos',next_pos)
+
+        if next_pos == []:
+            return
+        #set the new pos
+        idx_pos = np.random.randint(len(next_pos)-1) if len(next_pos) >1 else 0
+        next_pos = next_pos[idx_pos]
+        #print('next_pos',next_pos)
+        #c
         
-    #print(to_applies)
-    #applies to map
-    for new_pos,possibility in to_applies.items():
-        map_v[new_pos] =map_v[new_pos].intersection(possibility)
+        #print(self.map_v[next_pos])
+        choice = {list(self.map_v[next_pos])[ np.random.randint(len(self.map_v[next_pos])-1) ]}
+        #print(choice)
 
+        self.map_v[next_pos] = choice
 
-def set_next(map_v,nb_tile):
-    min_e = nb_tile
-    out = []
-    for x in range(map_v.shape[0]):
-        for y in range(map_v.shape[1]):
-            e_tile =  len(map_v[x,y])
-            if e_tile > 1 and e_tile <= min_e  :
-                min_e = e_tile
-                out.append((x,y))
+        #self.plot()
 
-    idx = np.random.randint(len(out)-1) if len(out) >1 else 0
-    out = out[idx]
+        self.collapse(next_pos)
+        self.run()
 
-    if len(map_v[out]) == 1:
-        return
-    idx = np.random.randint(len(map_v[out])-1)
-    map_v[out] = {list(map_v[out])[idx]}
+    def get_max_possibility(self):
+        max_possibility = (-1,(-1,-1))
+        for y in range(self.limit_map[1]):
+            for x in range(self.limit_map[0]):
+                if len(self.map_v[x,y]) > max_possibility[0]:
+                    max_possibility = (len(self.map_v[x,y]),(x,y))
+        return max_possibility
 
-# size x,y
-map_size = (20,10)
+    def plot(self):
+        (max_len, max_pos) = self.get_max_possibility()
+        for y in range(self.limit_map[1]):
+            for x in range(self.limit_map[0]):
+                print(f'|',end='')
+                for possibility in self.map_v[x,y]:
+                    print(f'{possibility} ',end='')
+                
+                print('  '*(max_len-len(self.map_v[x,y])),end='')
+            print()
 
-#init map
+    def plot_tile(self):
+        (max_len, max_pos) = self.get_max_possibility()
+        for y in range(self.limit_map[1]):
+            for x in range(self.limit_map[0]):
+                if len(self.map_v[x,y])!= 1:
+                    print('x',end='')
+                else:
+                    print(self.tiles[list(self.map_v[x,y])[0]],end='')
+                
+            print()
 
-map_v=np.empty(map_size,dtype=object)
-for x in range(map_v.shape[0]):
-    for y in range(map_v.shape[1]):
-        map_v[x,y] = set(tiles.keys())
-
-get_entropy(map_v,len(tiles.keys()))
-#test
-
-
-
-
-import time
-plot_map(map_v,len(tiles.keys()))
-
-while get_entropy(map_v,len(tiles.keys())) > 0.0001:
-    #plot_tiles(map_v,tiles) 
-    for x in range(map_v.shape[0]):
-        for y in range(map_v.shape[1]):
-            run_rule_pos(map_v,x,y,tiles_rule)
-    # plot_tiles(map_v,tiles)
-    # plot_map(map_v,len(tiles.keys()))
     
 
-    set_next(map_v,len(tiles.keys()))
+a = WaveFunctionCollapse(tiles,tiles_rule,(5,5))
 
-plot_map(map_v,len(tiles.keys()))
-plot_tiles(map_v,tiles)
+import sys
+import threading
+
+a.run()                 
+    
+#a.plot()
+a.plot_tile()
+
