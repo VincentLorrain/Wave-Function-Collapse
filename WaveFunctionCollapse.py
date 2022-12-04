@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import time
 
 print(sys.getrecursionlimit())
 tiles = {
@@ -16,9 +17,9 @@ tiles = {
 
 tiles_rule = {
     (0,-1):{-1:{0,1,2,3,4,5,6}, 0:{0,3,5,6},    1:{0,3,5,6},    2:{0,3,5,6},    3:{0,3},        4:{1,2,4},      5:{4,1,2},      6:{4,1,2}},   #u
-    (1,0) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,4,5},    1:{0,2,3},      2:{0,4,5},      3:{2,3,6},      4:{0,4,1,5},    5:{3,6},        6:{0,4,1}},   #r
+    (1,0) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,4,5},    1:{2,3,6},      2:{0,4,5},      3:{2,3,6},      4:{0,4,1,5},    5:{3,6},        6:{0,4,1}},   #r
     (0,1) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,2,3},    1:{4,5,6},      2:{4,5,6},      3:{0,1,2,3},    4:{5,6,4},      5:{0,1,2,3},    6:{0,1,2,3}}, #d
-    (-1,0):{-1:{0,1,2,3,4,5,6}, 0:{0,2,4,6},    1:{0,4,6},      2:{1,3},        3:{5,1,3},      4:{0,2,6,4},    5:{4,6,0,2},    6:{1,2,3,5}}, #l
+    (-1,0):{-1:{0,1,2,3,4,5,6}, 0:{0,2,4,6},    1:{0,4,6},      2:{1,3},        3:{5,1,3},      4:{0,2,6,4},    5:{4,6,0,2},    6:{1,3,5}}, #l
 }
 
 class WaveFunctionCollapse:
@@ -44,10 +45,11 @@ class WaveFunctionCollapse:
         return local_rule
 
     def collapse(self,position:tuple):
-        #print('go colapse')
-
+        print('go colapse')
+       
         self.plot()
-        print(position)
+        # time.sleep(1)
+        # print(position)
         local_rule = self.get_rules_form_centrals(self.map_v[position])
         for delta_pos,rule in local_rule.items():
             new_pos = (position[0]+delta_pos[0],position[1]+delta_pos[1])
@@ -60,9 +62,8 @@ class WaveFunctionCollapse:
             new_possibility = self.map_v[new_pos].intersection(rule)
 
             if new_possibility == set():
-                print(self.map_v[new_pos],rule,new_possibility)
+               
                 self.map_v[new_pos] = {-1}
-                self.plot()
                 print('Untrue',position,new_pos)
                 
                 #raise()
@@ -81,19 +82,22 @@ class WaveFunctionCollapse:
         #print('go')
         for y in range(self.limit_map[1]):
             for x in range(self.limit_map[0]):
-                if len(self.map_v[x,y]) > 1 and len(self.map_v[x,y]) <= min_possibility:
-                    min_possibility = len(self.map_v[x,y])
-                    next_pos.append((x,y))
-        #print('the next')
-        #self.plot()
-        #print('next_pos',next_pos)
+                #print(min_possibility)
+                if len(self.map_v[x,y]) > 1 :
+                    if len(self.map_v[x,y]) < min_possibility:
+                        min_possibility = len(self.map_v[x,y])
+                        next_pos = [(x,y)]
+                    elif len(self.map_v[x,y]) == min_possibility:
+                        next_pos.append((x,y))
+        self.plot()
+        print('next_pos',next_pos)
 
         if next_pos == []:
             return
         #set the new pos
         idx_pos = np.random.randint(len(next_pos)-1) if len(next_pos) >1 else 0
         next_pos = next_pos[idx_pos]
-        #print('next_pos',next_pos)
+        print('next_pos',next_pos)
         #c
         
         #print(self.map_v[next_pos])
@@ -139,7 +143,7 @@ class WaveFunctionCollapse:
 
     
 
-a = WaveFunctionCollapse(tiles,tiles_rule,(5,5))
+a = WaveFunctionCollapse(tiles,tiles_rule,(40,5))
 
 import sys
 import threading
