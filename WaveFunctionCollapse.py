@@ -1,8 +1,9 @@
 import numpy as np
 import sys
-import time
 
 print(sys.getrecursionlimit())
+
+
 tiles = {
     -1:'o',
     0 : ' ',
@@ -14,7 +15,16 @@ tiles = {
     6 : '╝',
 }
 
+"""
+the rule is define depending of a grid deltas (x,y)
+      (0,1)
+        |  
+(-1,0)--O--(1,0)
+        |
+     (0-,1)
 
+then for each type of tiles in the center we define the tiles that can be set to the delta 
+"""
 tiles_rule = {
     (0,-1):{-1:{0,1,2,3,4,5,6}, 0:{0,3,5,6},    1:{0,3,5,6},    2:{0,3,5,6},    3:{0,3},        4:{1,2,4},      5:{4,1,2},      6:{4,1,2}},   #u
     (1,0) :{-1:{0,1,2,3,4,5,6}, 0:{0,1,4,5},    1:{2,3,6},      2:{0,4,5},      3:{2,3,6},      4:{0,4,1,5},    5:{3,6},        6:{0,4,1}},   #r
@@ -45,11 +55,7 @@ class WaveFunctionCollapse:
         return local_rule
 
     def collapse(self,position:tuple):
-        print('go colapse')
-       
-        self.plot()
-        # time.sleep(1)
-        # print(position)
+
         local_rule = self.get_rules_form_centrals(self.map_v[position])
         for delta_pos,rule in local_rule.items():
             new_pos = (position[0]+delta_pos[0],position[1]+delta_pos[1])
@@ -89,8 +95,8 @@ class WaveFunctionCollapse:
                         next_pos = [(x,y)]
                     elif len(self.map_v[x,y]) == min_possibility:
                         next_pos.append((x,y))
-        self.plot()
-        print('next_pos',next_pos)
+        # self.plot()
+        # print('next_pos',next_pos)
 
         if next_pos == []:
             return
@@ -142,14 +148,8 @@ class WaveFunctionCollapse:
             print()
 
     
-
-a = WaveFunctionCollapse(tiles,tiles_rule,(40,5))
-
-import sys
-import threading
-
-a.run()                 
-    
-#a.plot()
-a.plot_tile()
+if __name__ == "__main__":
+    a = WaveFunctionCollapse(tiles,tiles_rule,(10,10))
+    a.run()                 
+    a.plot_tile()
 
